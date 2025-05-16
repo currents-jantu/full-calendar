@@ -1,9 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { addDays, setHours, setMinutes, subDays } from "date-fns"
+import {
+  addDays,
+  addHours,
+  format,
+  setHours,
+  setMinutes,
+  subDays,
+} from "date-fns"
+import { toast } from "sonner"
 
-import { EventCalendar, type CalendarEvent } from "@/components/event-calendar"
+import {
+  EventCalendar,
+  EventDialog,
+  type CalendarEvent,
+} from "@/components/event-calendar"
 import ThemeToggle from "@/components/theme-toggle"
 
 // Sample events data with hardcoded times
@@ -132,7 +144,8 @@ const sampleEvents: CalendarEvent[] = [
 
 export default function Home() {
   const [events, setEvents] = useState<CalendarEvent[]>(sampleEvents)
-
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false)
   const handleEventAdd = (event: CalendarEvent) => {
     setEvents([...events, event])
   }
@@ -145,8 +158,81 @@ export default function Home() {
     )
   }
 
+  // const handleEventDelete = (eventId: string) => {
+  //   setEvents(events.filter((event) => event.id !== eventId))
+  // }
+
+  const handleEventSelect = (event: CalendarEvent) => {
+    console.log("Event selected:", event) // Debug log
+    setSelectedEvent(event)
+    setIsEventDialogOpen(true)
+  }
+
+  const handleEventCreate = (startTime: Date) => {
+    console.log("Creating new event at:", startTime) // Debug log
+
+    // Snap to 15-minute intervals
+    const minutes = startTime.getMinutes()
+    const remainder = minutes % 15
+    if (remainder !== 0) {
+      if (remainder < 7.5) {
+        // Round down to nearest 15 min
+        startTime.setMinutes(minutes - remainder)
+      } else {
+        // Round up to nearest 15 min
+        startTime.setMinutes(minutes + (15 - remainder))
+      }
+      startTime.setSeconds(0)
+      startTime.setMilliseconds(0)
+    }
+
+    const newEvent: CalendarEvent = {
+      id: "",
+      title: "",
+      start: startTime,
+      end: addHours(startTime, 1),
+      allDay: false,
+    }
+    setSelectedEvent(newEvent)
+    setIsEventDialogOpen(true)
+    handleEventAdd(newEvent)
+  }
+
+  const handleEventSave = (event: CalendarEvent) => {
+    handleEventUpdate(event)
+    if (event.id) {
+      // onEventUpdate?.(event)
+      // Show toast notification when an event is updated
+      toast(`Event "${event.title}" updated`, {
+        description: format(new Date(event.start), "MMM d, yyyy"),
+        position: "bottom-left",
+      })
+    } else {
+      // onEventAdd?.({
+      //   ...event,
+      //   id: Math.random().toString(36).substring(2, 11),
+      // })
+      // Show toast notification when an event is added
+      toast(`Event "${event.title}" added`, {
+        description: format(new Date(event.start), "MMM d, yyyy"),
+        position: "bottom-left",
+      })
+    }
+    setIsEventDialogOpen(false)
+    setSelectedEvent(null)
+  }
   const handleEventDelete = (eventId: string) => {
+    const deletedEvent = events.find((e) => e.id === eventId)
+    setIsEventDialogOpen(false)
+    setSelectedEvent(null)
     setEvents(events.filter((event) => event.id !== eventId))
+    // Show toast notification when an event is deleted
+    if (deletedEvent) {
+      toast(`Event "${deletedEvent.title}" deleted`, {
+        description: format(new Date(deletedEvent.start), "MMM d, yyyy"),
+        position: "bottom-left",
+      })
+    }
   }
 
   return (
@@ -154,9 +240,21 @@ export default function Home() {
     <div className="flex flex-col p-1 sm:p-4 md:p-8">
       <EventCalendar
         events={events}
-        onEventAdd={handleEventAdd}
-        onEventUpdate={handleEventUpdate}
+        // onEventAdd={handleEventAdd}
+        // onEventUpdate={handleEventUpdate}
         onEventDelete={handleEventDelete}
+        onEventSelect={handleEventSelect}
+        onEventCreate={handleEventCreate}
+      />
+      <EventDialog
+        event={selectedEvent}
+        isOpen={isEventDialogOpen}
+        onClose={() => {
+          setIsEventDialogOpen(false)
+          setSelectedEvent(null)
+        }}
+        onSave={handleEventSave}
+        onDelete={handleEventDelete}
       />
       <div className="mt-4">
         <ThemeToggle />
