@@ -14,7 +14,7 @@ import {
 interface AgendaViewProps {
   currentDate: Date
   events: CalendarEvent[]
-  onEventSelect: (event: CalendarEvent) => void
+  onEventSelect?: (event: CalendarEvent) => void
 }
 
 export function AgendaView({
@@ -33,7 +33,7 @@ export function AgendaView({
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
     console.log("Agenda view event clicked:", event)
-    onEventSelect(event)
+    onEventSelect?.(event)
   }
 
   // Check if there are any days with events

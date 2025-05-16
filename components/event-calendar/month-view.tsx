@@ -37,8 +37,8 @@ import { DefaultStartHour } from "@/components/event-calendar/constants"
 interface MonthViewProps {
   currentDate: Date
   events: CalendarEvent[]
-  onEventSelect: (event: CalendarEvent) => void
-  onEventCreate: (startTime: Date) => void
+  onEventSelect?: (event: CalendarEvent) => void
+  onEventCreate?: (startTime: Date) => void
 }
 
 export function MonthView({
@@ -80,7 +80,7 @@ export function MonthView({
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
-    onEventSelect(event)
+    onEventSelect?.(event)
   }
 
   const [isMounted, setIsMounted] = useState(false)
@@ -144,7 +144,7 @@ export function MonthView({
                     onClick={() => {
                       const startTime = new Date(day)
                       startTime.setHours(DefaultStartHour, 0, 0)
-                      onEventCreate(startTime)
+                      onEventCreate?.(startTime)
                     }}
                   >
                     <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">

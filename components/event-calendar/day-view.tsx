@@ -28,8 +28,8 @@ import { EndHour, StartHour } from "@/components/event-calendar/constants"
 interface DayViewProps {
   currentDate: Date
   events: CalendarEvent[]
-  onEventSelect: (event: CalendarEvent) => void
-  onEventCreate: (startTime: Date) => void
+  onEventSelect?: (event: CalendarEvent) => void
+  onEventCreate?: (startTime: Date) => void
 }
 
 interface PositionedEvent {
@@ -158,7 +158,7 @@ export function DayView({
       currentColumn.push({ event, end: adjustedEnd })
 
       // First column takes full width, others are indented by 10% and take 90% width
-      const width = columnIndex === 0 ? 1 : 1 - (columnIndex * 0.1)
+      const width = columnIndex === 0 ? 1 : 1 - columnIndex * 0.1
       const left = columnIndex === 0 ? 0 : columnIndex * 0.1
 
       result.push({
@@ -176,7 +176,7 @@ export function DayView({
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
-    onEventSelect(event)
+    onEventSelect?.(event)
   }
 
   const showAllDaySection = allDayEvents.length > 0
@@ -307,7 +307,7 @@ export function DayView({
                         const startTime = new Date(currentDate)
                         startTime.setHours(hourValue)
                         startTime.setMinutes(quarter * 15)
-                        onEventCreate(startTime)
+                        onEventCreate?.(startTime)
                       }}
                     />
                   )
