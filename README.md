@@ -190,9 +190,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
     *   Renamed "Limitations and Known Issues" to "Original Limitations and Known Issues (To Be Addressed)" to connect them to your roadmap.
 7.  **"Contributing to this Fork":** Tailored the contribution section to encourage work on your roadmap items.
 8.  **Clarity:** Tried to make the distinction between the original component's state and your fork's goals clear throughout.
-
-Remember to:
-
-*   Replace `[https://github.com/origin-space/event-calendar]` with the actual link if you have one.
-*   Update the import path in the "Original Usage" example if it changes significantly after your refactor (e.g., if it becomes `@your-npm-scope/event-calendar`).
-*   As you complete tasks, move them from "Ongoing Tasks" to a "Completed Enhancements" section or simply update their descriptions.
