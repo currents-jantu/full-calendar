@@ -172,21 +172,4 @@ Please ensure your code adheres to any existing linting and formatting guideline
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details. (Assuming the license remains the same, otherwise update as needed).
-```
-
-**Key changes and why:**
-
-1.  **Title Suffix:** Added `(Fork)` to the main title.
-2.  **Fork Disclaimer:** A prominent `⚠️` block at the top clarifies its status.
-3.  **Introduction to the Fork:** Explains the purpose of the fork and links (placeholder) to the original.
-4.  **"Fork Development Roadmap & Ongoing Tasks":** This is the new section you wanted.
-    *   It lists your planned tasks clearly.
-    *   Each task has a high-level "Goal" and more specific "Tasks."
-    *   It invites contributions specifically to these areas.
-5.  **"Original Component Features (Foundation)":** A clear separator to indicate that the following sections describe the base component this fork is built upon.
-6.  **"Original Usage/Props/Event Object/View Modes/Limitations":** Kept these sections as they describe the current functionality and areas for improvement.
-    *   Added a comment in `Original Usage` and `Original Event Object Structure` to hint at upcoming changes due to your tasks.
-    *   Renamed "Limitations and Known Issues" to "Original Limitations and Known Issues (To Be Addressed)" to connect them to your roadmap.
-7.  **"Contributing to this Fork":** Tailored the contribution section to encourage work on your roadmap items.
-8.  **Clarity:** Tried to make the distinction between the original component's state and your fork's goals clear throughout.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
