@@ -12,7 +12,9 @@ import {
   isSameDay,
   startOfDay,
 } from "date-fns"
+import { formatInTimeZone, utcToZonedTime } from "date-fns-tz"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import { cn } from "@/lib/utils"
 import {
   DraggableEvent,
@@ -47,55 +49,65 @@ export function DayView({
   onEventSelect,
   onEventCreate,
 }: DayViewProps) {
+  const { timezone } = useTimezone()
+  const zonedCurrentDate = useMemo(
+    () => utcToZonedTime(currentDate, timezone),
+    [currentDate, timezone]
+  )
+
   const hours = useMemo(() => {
-    const dayStart = startOfDay(currentDate)
+    const dayStart = startOfDay(zonedCurrentDate)
     return eachHourOfInterval({
       start: addHours(dayStart, StartHour),
       end: addHours(dayStart, EndHour - 1),
     })
-  }, [currentDate])
+  }, [zonedCurrentDate])
 
   const dayEvents = useMemo(() => {
     return events
       .filter((event) => {
-        const eventStart = new Date(event.start)
-        const eventEnd = new Date(event.end)
+        const eventStart = utcToZonedTime(event.start, timezone)
+        const eventEnd = utcToZonedTime(event.end, timezone)
         return (
-          isSameDay(currentDate, eventStart) ||
-          isSameDay(currentDate, eventEnd) ||
-          (currentDate > eventStart && currentDate < eventEnd)
+          isSameDay(zonedCurrentDate, eventStart) ||
+          isSameDay(zonedCurrentDate, eventEnd) ||
+          (zonedCurrentDate > eventStart && zonedCurrentDate < eventEnd)
         )
       })
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-  }, [currentDate, events])
+      .sort(
+        (a, b) =>
+          utcToZonedTime(a.start, timezone).getTime() -
+          utcToZonedTime(b.start, timezone).getTime()
+      )
+  }, [zonedCurrentDate, events, timezone])
 
   // Filter all-day events
   const allDayEvents = useMemo(() => {
     return dayEvents.filter((event) => {
       // Include explicitly marked all-day events or multi-day events
-      return event.allDay || isMultiDayEvent(event)
+      return event.allDay || isMultiDayEvent(event, timezone)
     })
-  }, [dayEvents])
+  }, [dayEvents, timezone])
 
   // Get only single-day time-based events
   const timeEvents = useMemo(() => {
     return dayEvents.filter((event) => {
       // Exclude all-day events and multi-day events
-      return !event.allDay && !isMultiDayEvent(event)
+      return !event.allDay && !isMultiDayEvent(event, timezone)
     })
-  }, [dayEvents])
+  }, [dayEvents, timezone])
 
   // Process events to calculate positions
   const positionedEvents = useMemo(() => {
     const result: PositionedEvent[] = []
-    const dayStart = startOfDay(currentDate)
+    const dayStart = startOfDay(zonedCurrentDate)
 
     // Sort events by start time and duration
     const sortedEvents = [...timeEvents].sort((a, b) => {
-      const aStart = new Date(a.start)
-      const bStart = new Date(b.start)
-      const aEnd = new Date(a.end)
-      const bEnd = new Date(b.end)
+      const aStart = utcToZonedTime(a.start, timezone)
+      const bStart = utcToZonedTime(b.start, timezone)
+      const aEnd = utcToZonedTime(a.end, timezone)
+      const bEnd = utcToZonedTime(b.end, timezone)
 
       // First sort by start time
       if (aStart < bStart) return -1
@@ -111,14 +123,14 @@ export function DayView({
     const columns: { event: CalendarEvent; end: Date }[][] = []
 
     sortedEvents.forEach((event) => {
-      const eventStart = new Date(event.start)
-      const eventEnd = new Date(event.end)
+      const eventStart = utcToZonedTime(event.start, timezone)
+      const eventEnd = utcToZonedTime(event.end, timezone)
 
       // Adjust start and end times if they're outside this day
-      const adjustedStart = isSameDay(currentDate, eventStart)
+      const adjustedStart = isSameDay(zonedCurrentDate, eventStart)
         ? eventStart
         : dayStart
-      const adjustedEnd = isSameDay(currentDate, eventEnd)
+      const adjustedEnd = isSameDay(zonedCurrentDate, eventEnd)
         ? eventEnd
         : addHours(dayStart, 24)
 
@@ -141,7 +153,10 @@ export function DayView({
           const overlaps = col.some((c) =>
             areIntervalsOverlapping(
               { start: adjustedStart, end: adjustedEnd },
-              { start: new Date(c.event.start), end: new Date(c.event.end) }
+              {
+                start: utcToZonedTime(c.event.start, timezone),
+                end: utcToZonedTime(c.event.end, timezone),
+              }
             )
           )
           if (!overlaps) {
@@ -172,7 +187,7 @@ export function DayView({
     })
 
     return result
-  }, [currentDate, timeEvents])
+  }, [zonedCurrentDate, timeEvents, timezone])
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -181,8 +196,9 @@ export function DayView({
 
   const showAllDaySection = allDayEvents.length > 0
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
-    currentDate,
-    "day"
+    currentDate, // Keep using original for indicator logic if it expects UTC
+    "day",
+    timezone
   )
 
   return (
@@ -197,10 +213,10 @@ export function DayView({
             </div>
             <div className="border-border/70 relative border-r p-1 last:border-r-0">
               {allDayEvents.map((event) => {
-                const eventStart = new Date(event.start)
-                const eventEnd = new Date(event.end)
-                const isFirstDay = isSameDay(currentDate, eventStart)
-                const isLastDay = isSameDay(currentDate, eventEnd)
+                const eventStart = utcToZonedTime(event.start, timezone)
+                const eventEnd = utcToZonedTime(event.end, timezone)
+                const isFirstDay = isSameDay(zonedCurrentDate, eventStart)
+                const isLastDay = isSameDay(zonedCurrentDate, eventEnd)
 
                 return (
                   <EventItem
@@ -210,6 +226,7 @@ export function DayView({
                     view="month"
                     isFirstDay={isFirstDay}
                     isLastDay={isLastDay}
+                    timezone={timezone}
                   >
                     {/* Always show the title in day view for better usability */}
                     <div>{event.title}</div>
@@ -230,7 +247,7 @@ export function DayView({
             >
               {index > 0 && (
                 <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-16 max-w-full items-center justify-end pe-2 text-[10px] sm:pe-4 sm:text-xs">
-                  {format(hour, "h a")}
+                  {formatInTimeZone(hour, timezone, "h a")}
                 </span>
               )}
             </div>
@@ -258,6 +275,7 @@ export function DayView({
                   onClick={(e) => handleEventClick(positionedEvent.event, e)}
                   showTime
                   height={positionedEvent.height}
+                  timezone={timezone}
                 />
               </div>
             </div>
@@ -290,9 +308,10 @@ export function DayView({
                   return (
                     <DroppableCell
                       key={`${hour.toString()}-${quarter}`}
-                      id={`day-cell-${currentDate.toISOString()}-${quarterHourTime}`}
-                      date={currentDate}
+                      id={`day-cell-${zonedCurrentDate.toISOString()}-${quarterHourTime}`}
+                      date={zonedCurrentDate}
                       time={quarterHourTime}
+                      timezone={timezone}
                       className={cn(
                         "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                         quarter === 0 && "top-0",
@@ -304,7 +323,7 @@ export function DayView({
                           "top-[calc(var(--week-cells-height)/4*3)]"
                       )}
                       onClick={() => {
-                        const startTime = new Date(currentDate)
+                        const startTime = new Date(zonedCurrentDate)
                         startTime.setHours(hourValue)
                         startTime.setMinutes(quarter * 15)
                         onEventCreate?.(startTime)

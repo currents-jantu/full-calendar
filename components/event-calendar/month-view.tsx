@@ -13,7 +13,9 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns"
+import { formatInTimeZone, utcToZonedTime } from "date-fns-tz"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import {
   Popover,
   PopoverContent,
@@ -47,21 +49,23 @@ export function MonthView({
   onEventSelect,
   onEventCreate,
 }: MonthViewProps) {
+  const { timezone } = useTimezone()
+
   const days = useMemo(() => {
-    const monthStart = startOfMonth(currentDate)
+    const monthStart = startOfMonth(utcToZonedTime(currentDate, timezone))
     const monthEnd = endOfMonth(monthStart)
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
 
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd })
-  }, [currentDate])
+  }, [currentDate, timezone])
 
   const weekdays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
-      const date = addDays(startOfWeek(new Date()), i)
-      return format(date, "EEE")
+      const date = addDays(startOfWeek(utcToZonedTime(new Date(), timezone)), i)
+      return formatInTimeZone(date, timezone, "EEE")
     })
-  }, [])
+  }, [timezone])
 
   const weeks = useMemo(() => {
     const result = []
@@ -114,12 +118,20 @@ export function MonthView({
             {week.map((day, dayIndex) => {
               if (!day) return null // Skip if day is undefined
 
-              const dayEvents = getEventsForDay(events, day)
-              const spanningEvents = getSpanningEventsForDay(events, day)
-              const isCurrentMonth = isSameMonth(day, currentDate)
-              const cellId = `month-cell-${day.toISOString()}`
+              const zonedDay = utcToZonedTime(day, timezone)
+              const dayEvents = getEventsForDay(events, zonedDay, timezone)
+              const spanningEvents = getSpanningEventsForDay(
+                events,
+                zonedDay,
+                timezone
+              )
+              const isCurrentMonth = isSameMonth(
+                zonedDay,
+                utcToZonedTime(currentDate, timezone)
+              )
+              const cellId = `month-cell-${zonedDay.toISOString()}`
               const allDayEvents = [...spanningEvents, ...dayEvents]
-              const allEvents = getAllEventsForDay(events, day)
+              const allEvents = getAllEventsForDay(events, zonedDay, timezone)
 
               const isReferenceCell = weekIndex === 0 && dayIndex === 0
               const visibleCount = isMounted
@@ -135,30 +147,30 @@ export function MonthView({
                 <div
                   key={day.toString()}
                   className="group border-border/70 data-outside-cell:bg-muted/25 data-outside-cell:text-muted-foreground/70 border-r border-b last:border-r-0"
-                  data-today={isToday(day) || undefined}
+                  data-today={isToday(zonedDay) || undefined}
                   data-outside-cell={!isCurrentMonth || undefined}
                 >
                   <DroppableCell
                     id={cellId}
-                    date={day}
+                    date={zonedDay}
                     onClick={() => {
-                      const startTime = new Date(day)
+                      const startTime = new Date(zonedDay)
                       startTime.setHours(DefaultStartHour, 0, 0)
                       onEventCreate?.(startTime)
                     }}
                   >
                     <div className="group-data-today:bg-primary group-data-today:text-primary-foreground mt-1 inline-flex size-6 items-center justify-center rounded-full text-sm">
-                      {format(day, "d")}
+                      {formatInTimeZone(zonedDay, timezone, "d")}
                     </div>
                     <div
                       ref={isReferenceCell ? contentRef : null}
                       className="min-h-[calc((var(--event-height)+var(--event-gap))*2)] sm:min-h-[calc((var(--event-height)+var(--event-gap))*3)] lg:min-h-[calc((var(--event-height)+var(--event-gap))*4)]"
                     >
                       {sortEvents(allDayEvents).map((event, index) => {
-                        const eventStart = new Date(event.start)
-                        const eventEnd = new Date(event.end)
-                        const isFirstDay = isSameDay(day, eventStart)
-                        const isLastDay = isSameDay(day, eventEnd)
+                        const eventStart = utcToZonedTime(event.start, timezone)
+                        const eventEnd = utcToZonedTime(event.end, timezone)
+                        const isFirstDay = isSameDay(zonedDay, eventStart)
+                        const isLastDay = isSameDay(zonedDay, eventEnd)
 
                         const isHidden =
                           isMounted && visibleCount && index >= visibleCount
@@ -168,7 +180,7 @@ export function MonthView({
                         if (!isFirstDay) {
                           return (
                             <div
-                              key={`spanning-${event.id}-${day.toISOString().slice(0, 10)}`}
+                              key={`spanning-${event.id}-${zonedDay.toISOString().slice(0, 10)}`}
                               className="aria-hidden:hidden"
                               aria-hidden={isHidden ? "true" : undefined}
                             >
@@ -178,12 +190,14 @@ export function MonthView({
                                 view="month"
                                 isFirstDay={isFirstDay}
                                 isLastDay={isLastDay}
+                                timezone={timezone}
                               >
                                 <div className="invisible" aria-hidden={true}>
                                   {!event.allDay && (
                                     <span>
-                                      {format(
-                                        new Date(event.start),
+                                      {formatInTimeZone(
+                                        eventStart,
+                                        timezone,
                                         "h:mm"
                                       )}{" "}
                                     </span>
@@ -207,6 +221,7 @@ export function MonthView({
                               onClick={(e) => handleEventClick(event, e)}
                               isFirstDay={isFirstDay}
                               isLastDay={isLastDay}
+                              timezone={timezone}
                             />
                           </div>
                         )
@@ -236,14 +251,23 @@ export function MonthView({
                           >
                             <div className="space-y-2">
                               <div className="text-sm font-medium">
-                                {format(day, "EEE d")}
+                                {formatInTimeZone(zonedDay, timezone, "EEE d")}
                               </div>
                               <div className="space-y-1">
                                 {sortEvents(allEvents).map((event) => {
-                                  const eventStart = new Date(event.start)
-                                  const eventEnd = new Date(event.end)
-                                  const isFirstDay = isSameDay(day, eventStart)
-                                  const isLastDay = isSameDay(day, eventEnd)
+                                  const eventStart = utcToZonedTime(
+                                    event.start,
+                                    timezone
+                                  )
+                                  const eventEnd = utcToZonedTime(
+                                    event.end,
+                                    timezone
+                                  )
+                                  const isFirstDay = isSameDay(
+                                    zonedDay,
+                                    eventStart
+                                  )
+                                  const isLastDay = isSameDay(zonedDay, eventEnd)
 
                                   return (
                                     <EventItem
@@ -255,6 +279,7 @@ export function MonthView({
                                       view="month"
                                       isFirstDay={isFirstDay}
                                       isLastDay={isLastDay}
+                                      timezone={timezone}
                                     />
                                   )
                                 })}

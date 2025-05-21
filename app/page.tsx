@@ -16,6 +16,7 @@ import {
   EventDialog,
   type CalendarEvent,
 } from "@/components/event-calendar"
+import { TimezoneProvider } from "@/contexts/timezone-context" // Adjust path as necessary
 import ThemeToggle from "@/components/theme-toggle"
 
 // Sample events data with hardcoded times
@@ -237,18 +238,19 @@ export default function Home() {
 
   return (
     // Add min-h-screen to make it full height
-    <div className="flex flex-col p-1 sm:p-4 md:p-8">
-      <EventCalendar
-        events={events}
-        // onEventAdd={handleEventAdd}
-        // onEventUpdate={handleEventUpdate}
-        onEventDelete={handleEventDelete}
-        onEventSelect={handleEventSelect}
-        onEventCreate={handleEventCreate}
-      />
-      <EventDialog
-        event={selectedEvent}
-        isOpen={isEventDialogOpen}
+    <TimezoneProvider>
+      <div className="flex flex-col p-1 sm:p-4 md:p-8">
+        <EventCalendar
+          events={events}
+          // onEventAdd={handleEventAdd}
+          // onEventUpdate={handleEventUpdate}
+          onEventDelete={handleEventDelete}
+          onEventSelect={handleEventSelect}
+          onEventCreate={handleEventCreate}
+        />
+        <EventDialog
+          event={selectedEvent}
+          isOpen={isEventDialogOpen}
         onClose={() => {
           setIsEventDialogOpen(false)
           setSelectedEvent(null)
@@ -257,8 +259,9 @@ export default function Home() {
         onDelete={handleEventDelete}
       />
       <div className="mt-4">
-        <ThemeToggle />
+          <ThemeToggle />
+        </div>
       </div>
-    </div>
+    </TimezoneProvider>
   )
 }

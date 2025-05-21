@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { RiCalendarLine, RiDeleteBinLine } from "@remixicon/react"
 import { format, isBefore } from "date-fns"
+import { zonedTimeToUtc } from "date-fns-tz"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -55,6 +57,7 @@ export function EventDialog({
   onSave,
   onDelete,
 }: EventDialogProps) {
+  const { timezone } = useTimezone()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [startDate, setStartDate] = useState<Date>(new Date())
@@ -168,12 +171,15 @@ export function EventDialog({
     // Use generic title if empty
     const eventTitle = title.trim() ? title : "(no title)"
 
+    const utcStart = zonedTimeToUtc(start, timezone)
+    const utcEnd = zonedTimeToUtc(end, timezone)
+
     onSave({
       id: event?.id || "",
       title: eventTitle,
       description,
-      start,
-      end,
+      start: utcStart,
+      end: utcEnd,
       allDay,
       location,
       color,
