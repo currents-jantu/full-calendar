@@ -2,8 +2,10 @@
 
 import { useMemo } from "react"
 import { RiCalendarEventLine } from "@remixicon/react"
-import { addDays, format, isToday } from "date-fns"
+import { addDays, isToday } from "date-fns"
+import { formatInTimeZone, utcToZonedTime } from "date-fns-tz"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import {
   AgendaDaysToShow,
   CalendarEvent,
@@ -22,23 +24,24 @@ export function AgendaView({
   events,
   onEventSelect,
 }: AgendaViewProps) {
+  const { timezone } = useTimezone()
+
   // Show events for the next days based on constant
   const days = useMemo(() => {
-    console.log("Agenda view updating with date:", currentDate.toISOString())
+    const zonedCurrentDate = utcToZonedTime(currentDate, timezone)
     return Array.from({ length: AgendaDaysToShow }, (_, i) =>
-      addDays(new Date(currentDate), i)
+      addDays(zonedCurrentDate, i)
     )
-  }, [currentDate])
+  }, [currentDate, timezone])
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
-    console.log("Agenda view event clicked:", event)
     onEventSelect?.(event)
   }
 
   // Check if there are any days with events
   const hasEvents = days.some(
-    (day) => getAgendaEventsForDay(events, day).length > 0
+    (day) => getAgendaEventsForDay(events, day, timezone).length > 0
   )
 
   return (
@@ -56,7 +59,7 @@ export function AgendaView({
         </div>
       ) : (
         days.map((day) => {
-          const dayEvents = getAgendaEventsForDay(events, day)
+          const dayEvents = getAgendaEventsForDay(events, day, timezone)
 
           if (dayEvents.length === 0) return null
 
@@ -69,7 +72,7 @@ export function AgendaView({
                 className="bg-background absolute -top-3 left-0 flex h-6 items-center pe-4 text-[10px] uppercase data-today:font-medium sm:pe-4 sm:text-xs"
                 data-today={isToday(day) || undefined}
               >
-                {format(day, "d MMM, EEEE")}
+                {formatInTimeZone(day, timezone, "d MMM, EEEE")}
               </span>
               <div className="mt-6 space-y-2">
                 {dayEvents.map((event) => (
@@ -78,6 +81,7 @@ export function AgendaView({
                     event={event}
                     view="agenda"
                     onClick={(e) => handleEventClick(event, e)}
+                    timezone={timezone}
                   />
                 ))}
               </div>

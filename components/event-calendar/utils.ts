@@ -1,4 +1,5 @@
 import { isSameDay } from "date-fns"
+import { utcToZonedTime } from "date-fns-tz"
 
 import type { CalendarEvent, EventColor } from "@/components/event-calendar"
 
@@ -47,10 +48,17 @@ export function getBorderRadiusClasses(
 /**
  * Check if an event is a multi-day event
  */
-export function isMultiDayEvent(event: CalendarEvent): boolean {
-  const eventStart = new Date(event.start)
-  const eventEnd = new Date(event.end)
-  return event.allDay || eventStart.getDate() !== eventEnd.getDate()
+export function isMultiDayEvent(
+  event: CalendarEvent,
+  timezone?: string
+): boolean {
+  const eventStart = timezone
+    ? utcToZonedTime(event.start, timezone)
+    : new Date(event.start)
+  const eventEnd = timezone
+    ? utcToZonedTime(event.end, timezone)
+    : new Date(event.end)
+  return event.allDay || !isSameDay(eventStart, eventEnd)
 }
 
 /**
@@ -58,28 +66,49 @@ export function isMultiDayEvent(event: CalendarEvent): boolean {
  */
 export function getEventsForDay(
   events: CalendarEvent[],
-  day: Date
+  day: Date,
+  timezone?: string
 ): CalendarEvent[] {
+  const targetDay = timezone ? utcToZonedTime(day, timezone) : day
   return events
     .filter((event) => {
-      const eventStart = new Date(event.start)
-      return isSameDay(day, eventStart)
+      const eventStart = timezone
+        ? utcToZonedTime(event.start, timezone)
+        : new Date(event.start)
+      return isSameDay(targetDay, eventStart)
     })
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .sort((a, b) => {
+      const aStart = timezone
+        ? utcToZonedTime(a.start, timezone)
+        : new Date(a.start)
+      const bStart = timezone
+        ? utcToZonedTime(b.start, timezone)
+        : new Date(b.start)
+      return aStart.getTime() - bStart.getTime()
+    })
 }
 
 /**
  * Sort events with multi-day events first, then by start time
  */
-export function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
+export function sortEvents(
+  events: CalendarEvent[],
+  timezone?: string
+): CalendarEvent[] {
   return [...events].sort((a, b) => {
-    const aIsMultiDay = isMultiDayEvent(a)
-    const bIsMultiDay = isMultiDayEvent(b)
+    const aIsMultiDay = isMultiDayEvent(a, timezone)
+    const bIsMultiDay = isMultiDayEvent(b, timezone)
 
     if (aIsMultiDay && !bIsMultiDay) return -1
     if (!aIsMultiDay && bIsMultiDay) return 1
 
-    return new Date(a.start).getTime() - new Date(b.start).getTime()
+    const aStart = timezone
+      ? utcToZonedTime(a.start, timezone)
+      : new Date(a.start)
+    const bStart = timezone
+      ? utcToZonedTime(b.start, timezone)
+      : new Date(b.start)
+    return aStart.getTime() - bStart.getTime()
   })
 }
 
@@ -88,18 +117,25 @@ export function sortEvents(events: CalendarEvent[]): CalendarEvent[] {
  */
 export function getSpanningEventsForDay(
   events: CalendarEvent[],
-  day: Date
+  day: Date,
+  timezone?: string
 ): CalendarEvent[] {
+  const targetDay = timezone ? utcToZonedTime(day, timezone) : day
   return events.filter((event) => {
-    if (!isMultiDayEvent(event)) return false
+    if (!isMultiDayEvent(event, timezone)) return false
 
-    const eventStart = new Date(event.start)
-    const eventEnd = new Date(event.end)
+    const eventStart = timezone
+      ? utcToZonedTime(event.start, timezone)
+      : new Date(event.start)
+    const eventEnd = timezone
+      ? utcToZonedTime(event.end, timezone)
+      : new Date(event.end)
 
     // Only include if it's not the start day but is either the end day or a middle day
     return (
-      !isSameDay(day, eventStart) &&
-      (isSameDay(day, eventEnd) || (day > eventStart && day < eventEnd))
+      !isSameDay(targetDay, eventStart) &&
+      (isSameDay(targetDay, eventEnd) ||
+        (targetDay > eventStart && targetDay < eventEnd))
     )
   })
 }
@@ -109,15 +145,21 @@ export function getSpanningEventsForDay(
  */
 export function getAllEventsForDay(
   events: CalendarEvent[],
-  day: Date
+  day: Date,
+  timezone?: string
 ): CalendarEvent[] {
+  const targetDay = timezone ? utcToZonedTime(day, timezone) : day
   return events.filter((event) => {
-    const eventStart = new Date(event.start)
-    const eventEnd = new Date(event.end)
+    const eventStart = timezone
+      ? utcToZonedTime(event.start, timezone)
+      : new Date(event.start)
+    const eventEnd = timezone
+      ? utcToZonedTime(event.end, timezone)
+      : new Date(event.end)
     return (
-      isSameDay(day, eventStart) ||
-      isSameDay(day, eventEnd) ||
-      (day > eventStart && day < eventEnd)
+      isSameDay(targetDay, eventStart) ||
+      isSameDay(targetDay, eventEnd) ||
+      (targetDay > eventStart && targetDay < eventEnd)
     )
   })
 }
@@ -127,17 +169,31 @@ export function getAllEventsForDay(
  */
 export function getAgendaEventsForDay(
   events: CalendarEvent[],
-  day: Date
+  day: Date,
+  timezone?: string
 ): CalendarEvent[] {
+  const targetDay = timezone ? utcToZonedTime(day, timezone) : day
   return events
     .filter((event) => {
-      const eventStart = new Date(event.start)
-      const eventEnd = new Date(event.end)
+      const eventStart = timezone
+        ? utcToZonedTime(event.start, timezone)
+        : new Date(event.start)
+      const eventEnd = timezone
+        ? utcToZonedTime(event.end, timezone)
+        : new Date(event.end)
       return (
-        isSameDay(day, eventStart) ||
-        isSameDay(day, eventEnd) ||
-        (day > eventStart && day < eventEnd)
+        isSameDay(targetDay, eventStart) ||
+        isSameDay(targetDay, eventEnd) ||
+        (targetDay > eventStart && targetDay < eventEnd)
       )
     })
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .sort((a, b) => {
+      const aStart = timezone
+        ? utcToZonedTime(a.start, timezone)
+        : new Date(a.start)
+      const bStart = timezone
+        ? utcToZonedTime(b.start, timezone)
+        : new Date(b.start)
+      return aStart.getTime() - bStart.getTime()
+    })
 }

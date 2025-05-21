@@ -20,8 +20,10 @@ import {
   ChevronRightIcon,
   PlusIcon,
 } from "lucide-react"
+import { listTimeZones } from "date-fns-tz/listTimeZones"
 import { toast } from "sonner"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -77,6 +79,8 @@ export function EventCalendar({
   const [view, setView] = useState<CalendarView>(initialView)
   // const [isEventDialogOpen, setIsEventDialogOpen] = useState(false)
   // const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+
+  const { timezone, setTimezone } = useTimezone()
 
   // Add keyboard shortcuts for view switching
   useEffect(
@@ -254,6 +258,26 @@ export function EventCalendar({
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-1.5 max-[479px]:h-8">
+                  <span className="max-[479px]:sr-only">Timezone:</span>
+                  <span className="truncate">{timezone}</span>
+                  <ChevronDownIcon
+                    className="-me-1 opacity-60"
+                    size={16}
+                    aria-hidden="true"
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-h-96 min-w-48 overflow-y-auto">
+                {listTimeZones().map((tz) => (
+                  <DropdownMenuItem key={tz} onClick={() => setTimezone(tz)}>
+                    {tz}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-1.5 max-[479px]:h-8">

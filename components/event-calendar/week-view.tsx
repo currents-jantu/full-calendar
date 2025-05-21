@@ -17,7 +17,9 @@ import {
   startOfDay,
   startOfWeek,
 } from "date-fns"
+import { formatInTimeZone, utcToZonedTime } from "date-fns-tz"
 
+import { useTimezone } from "@/contexts/timezone-context"
 import { cn } from "@/lib/utils"
 import {
   DraggableEvent,
@@ -52,35 +54,38 @@ export function WeekView({
   onEventSelect,
   onEventCreate,
 }: WeekViewProps) {
-  const days = useMemo(() => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 })
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 })
-    return eachDayOfInterval({ start: weekStart, end: weekEnd })
-  }, [currentDate])
+  const { timezone } = useTimezone()
 
-  const weekStart = useMemo(
-    () => startOfWeek(currentDate, { weekStartsOn: 0 }),
-    [currentDate]
-  )
+  const days = useMemo(() => {
+    const zonedCurrentDate = utcToZonedTime(currentDate, timezone)
+    const weekStart = startOfWeek(zonedCurrentDate, { weekStartsOn: 0 })
+    const weekEnd = endOfWeek(zonedCurrentDate, { weekStartsOn: 0 })
+    return eachDayOfInterval({ start: weekStart, end: weekEnd })
+  }, [currentDate, timezone])
+
+  const weekStart = useMemo(() => {
+    const zonedCurrentDate = utcToZonedTime(currentDate, timezone)
+    return startOfWeek(zonedCurrentDate, { weekStartsOn: 0 })
+  }, [currentDate, timezone])
 
   const hours = useMemo(() => {
-    const dayStart = startOfDay(currentDate)
+    const dayStart = startOfDay(utcToZonedTime(currentDate, timezone))
     return eachHourOfInterval({
       start: addHours(dayStart, StartHour),
       end: addHours(dayStart, EndHour - 1),
     })
-  }, [currentDate])
+  }, [currentDate, timezone])
 
   // Get all-day events and multi-day events for the week
   const allDayEvents = useMemo(() => {
     return events
       .filter((event) => {
         // Include explicitly marked all-day events or multi-day events
-        return event.allDay || isMultiDayEvent(event)
+        return event.allDay || isMultiDayEvent(event, timezone)
       })
       .filter((event) => {
-        const eventStart = new Date(event.start)
-        const eventEnd = new Date(event.end)
+        const eventStart = utcToZonedTime(event.start, timezone)
+        const eventEnd = utcToZonedTime(event.end, timezone)
         return days.some(
           (day) =>
             isSameDay(day, eventStart) ||
@@ -88,7 +93,7 @@ export function WeekView({
             (day > eventStart && day < eventEnd)
         )
       })
-  }, [events, days])
+  }, [events, days, timezone])
 
   // Process events for each day to calculate positions
   const processedDayEvents = useMemo(() => {
@@ -96,10 +101,10 @@ export function WeekView({
       // Get events for this day that are not all-day events or multi-day events
       const dayEvents = events.filter((event) => {
         // Skip all-day events and multi-day events
-        if (event.allDay || isMultiDayEvent(event)) return false
+        if (event.allDay || isMultiDayEvent(event, timezone)) return false
 
-        const eventStart = new Date(event.start)
-        const eventEnd = new Date(event.end)
+        const eventStart = utcToZonedTime(event.start, timezone)
+        const eventEnd = utcToZonedTime(event.end, timezone)
 
         // Check if event is on this day
         return (
@@ -111,10 +116,10 @@ export function WeekView({
 
       // Sort events by start time and duration
       const sortedEvents = [...dayEvents].sort((a, b) => {
-        const aStart = new Date(a.start)
-        const bStart = new Date(b.start)
-        const aEnd = new Date(a.end)
-        const bEnd = new Date(b.end)
+        const aStart = utcToZonedTime(a.start, timezone)
+        const bStart = utcToZonedTime(b.start, timezone)
+        const aEnd = utcToZonedTime(a.end, timezone)
+        const bEnd = utcToZonedTime(b.end, timezone)
 
         // First sort by start time
         if (aStart < bStart) return -1
@@ -134,8 +139,8 @@ export function WeekView({
       const columns: { event: CalendarEvent; end: Date }[][] = []
 
       sortedEvents.forEach((event) => {
-        const eventStart = new Date(event.start)
-        const eventEnd = new Date(event.end)
+        const eventStart = utcToZonedTime(event.start, timezone)
+        const eventEnd = utcToZonedTime(event.end, timezone)
 
         // Adjust start and end times if they're outside this day
         const adjustedStart = isSameDay(day, eventStart) ? eventStart : dayStart
@@ -166,8 +171,8 @@ export function WeekView({
               areIntervalsOverlapping(
                 { start: adjustedStart, end: adjustedEnd },
                 {
-                  start: new Date(c.event.start),
-                  end: new Date(c.event.end),
+                  start: utcToZonedTime(c.event.start, timezone),
+                  end: utcToZonedTime(c.event.end, timezone),
                 }
               )
             )
@@ -202,7 +207,7 @@ export function WeekView({
     })
 
     return result
-  }, [days, events])
+  }, [days, events, timezone])
 
   const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -212,14 +217,17 @@ export function WeekView({
   const showAllDaySection = allDayEvents.length > 0
   const { currentTimePosition, currentTimeVisible } = useCurrentTimeIndicator(
     currentDate,
-    "week"
+    "week",
+    timezone
   )
 
   return (
     <div data-slot="week-view" className="flex h-full flex-col">
       <div className="bg-background/80 border-border/70 sticky top-0 z-30 grid grid-cols-8 border-b backdrop-blur-md">
         <div className="text-muted-foreground/70 py-2 text-center text-sm">
-          <span className="max-[479px]:sr-only">{format(new Date(), "O")}</span>
+          <span className="max-[479px]:sr-only">
+            {formatInTimeZone(new Date(), timezone, "O")}
+          </span>
         </div>
         {days.map((day) => (
           <div
@@ -228,9 +236,12 @@ export function WeekView({
             data-today={isToday(day) || undefined}
           >
             <span className="sm:hidden" aria-hidden="true">
-              {format(day, "E")[0]} {format(day, "d")}
+              {formatInTimeZone(day, timezone, "E")[0]}{" "}
+              {formatInTimeZone(day, timezone, "d")}
             </span>
-            <span className="max-sm:hidden">{format(day, "EEE dd")}</span>
+            <span className="max-sm:hidden">
+              {formatInTimeZone(day, timezone, "EEE dd")}
+            </span>
           </div>
         ))}
       </div>
@@ -245,8 +256,8 @@ export function WeekView({
             </div>
             {days.map((day, dayIndex) => {
               const dayAllDayEvents = allDayEvents.filter((event) => {
-                const eventStart = new Date(event.start)
-                const eventEnd = new Date(event.end)
+                const eventStart = utcToZonedTime(event.start, timezone)
+                const eventEnd = utcToZonedTime(event.end, timezone)
                 return (
                   isSameDay(day, eventStart) ||
                   (day > eventStart && day < eventEnd) ||
@@ -261,8 +272,8 @@ export function WeekView({
                   data-today={isToday(day) || undefined}
                 >
                   {dayAllDayEvents.map((event) => {
-                    const eventStart = new Date(event.start)
-                    const eventEnd = new Date(event.end)
+                    const eventStart = utcToZonedTime(event.start, timezone)
+                    const eventEnd = utcToZonedTime(event.end, timezone)
                     const isFirstDay = isSameDay(day, eventStart)
                     const isLastDay = isSameDay(day, eventEnd)
 
@@ -279,6 +290,7 @@ export function WeekView({
                         view="month"
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
+                        timezone={timezone}
                       >
                         {/* Show title if it's the first day of the event or the first visible day in the week */}
                         <div
@@ -309,7 +321,7 @@ export function WeekView({
             >
               {index > 0 && (
                 <span className="bg-background text-muted-foreground/70 absolute -top-3 left-0 flex h-6 w-16 max-w-full items-center justify-end pe-2 text-[10px] sm:pe-4 sm:text-xs">
-                  {format(hour, "h a")}
+                  {formatInTimeZone(hour, timezone, "h a")}
                 </span>
               )}
             </div>
@@ -343,6 +355,7 @@ export function WeekView({
                     onClick={(e) => handleEventClick(positionedEvent.event, e)}
                     showTime
                     height={positionedEvent.height}
+                    timezone={timezone}
                   />
                 </div>
               </div>
@@ -376,6 +389,7 @@ export function WeekView({
                         id={`week-cell-${day.toISOString()}-${quarterHourTime}`}
                         date={day}
                         time={quarterHourTime}
+                        timezone={timezone}
                         className={cn(
                           "absolute h-[calc(var(--week-cells-height)/4)] w-full",
                           quarter === 0 && "top-0",
