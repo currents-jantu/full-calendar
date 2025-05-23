@@ -36,7 +36,8 @@
     "react-day-picker": "9.6.4",
     "react-dom": "^19.1.0",
     "sonner": "^2.0.3",
-    "tailwind-merge": "^3.1.0"
+    "tailwind-merge": "^3.1.0",
+    "react-calendar": "file:./packages/calendar"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.4.1",
