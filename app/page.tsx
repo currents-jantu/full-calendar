@@ -9,13 +9,9 @@ import {
   setMinutes,
   subDays,
 } from "date-fns"
+import { EventCalendar, EventDialog, type CalendarEvent } from "react-calendar"
 import { toast } from "sonner"
 
-import {
-  EventCalendar,
-  EventDialog,
-  type CalendarEvent,
-} from "@/components/event-calendar"
 import ThemeToggle from "@/components/theme-toggle"
 
 // Sample events data with hardcoded times

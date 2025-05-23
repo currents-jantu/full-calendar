@@ -56,3 +56,9 @@ certificates
 
 # Turborepo
 .turbo
+
+# Packages and monorepo
+/packages/*/node_modules
+/packages/*/build
+/packages/*/out
+/packages/*/dist   
